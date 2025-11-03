@@ -48,7 +48,7 @@ async def get_results(request: Request):
     finally:
         if conn:
             conn.close()
-
+#health
 @app.get("/healthz")
 def health_check():
     # Health check for the initContainer

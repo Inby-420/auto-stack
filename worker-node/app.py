@@ -101,7 +101,7 @@ async def calculate(request: Request):
     except Exception as e:
         print(f"Error saving to database: {e}")
         return {"error": f"Error saving to database: {e}"}, 500
-
+#HEALTH
 @app.get("/healthz")
 def health_check():
     # Health check for the initContainer

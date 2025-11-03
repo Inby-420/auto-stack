@@ -104,7 +104,7 @@ def run_sender():
             print(f"Failed to connect to worker: {e}")
         
         time.sleep(sleep_time)
-
+#class
 if __name__ == "__main__":
     run_sender()
 
