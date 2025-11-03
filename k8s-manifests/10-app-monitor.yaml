@@ -1,71 +1,18 @@
+# It just finds services with the "release: prometheus" label.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: app-microservice-monitor
-  namespace: monitoring # Prometheus Operator typically lives in 'monitoring' namespace
+  namespace: monitoring # We create this in the 'monitoring' namespace
   labels:
-    # This label is critical: Prometheus's ServiceMonitor selector looks for it.
-    release: prometheus
+    release: prometheus # This label is critical!
 spec:
-  # This tells Prometheus which Endpoints to scrape
-  selector:
-    matchLabels:
-      app: app-metrics # This label matches the one on the worker/sender Services
-  
-  # This tells Prometheus which namespace to look in for the Services/Endpoints
   namespaceSelector:
     matchNames:
-      - default # We want to scrape pods running in the 'default' namespace
-
-  # This defines the scraping endpoints (our /metrics page)
+      - default # We're looking for services in the 'default' namespace
+  selector:
+    matchLabels:
+      release: prometheus # It will find any Service with this label
   endpoints:
-    - port: metrics-port # Reference the port name defined in our Services
-      path: /metrics       # The path where Prometheus metrics are exposed
-      interval: 15s        # How often Prometheus should scrape (every 15 seconds)
-
----
-# Patch existing Service definitions to include the 'app-metrics' label
-# This is NOT a new file, it is just applied with the others to ensure our existing
-# Services (worker-svc and sender-svc) have the labels the ServiceMonitor needs.
-
-# PATCH for worker-svc
-apiVersion: v1
-kind: Service
-metadata:
-  name: worker-svc
-  namespace: default
-  labels:
-    # Add a unique label so the ServiceMonitor can select this Service
-    app: app-metrics
-spec:
-  # The selector should remain the same to target the correct Deployment
-  selector:
-    app: worker
-  ports:
-    - name: http-port
-      port: 8525
-      targetPort: 8525
-    - name: metrics-port # Define the metrics port by name
-      port: 8001
-      targetPort: 8001
-  type: ClusterIP # Internal only
-
----
-# PATCH for sender-svc
-apiVersion: v1
-kind: Service
-metadata:
-  name: sender-svc
-  namespace: default
-  labels:
-    # Add a unique label so the ServiceMonitor can select this Service
-    app: app-metrics
-spec:
-  selector:
-    app: sender
-  ports:
-    - name: metrics-port # Define the metrics port by name
-      port: 8001
-      targetPort: 8001
-  type: ClusterIP # Internal only
-
+  - port: http-metrics # It will scrape the port named 'http-metrics'
+    interval: 15s

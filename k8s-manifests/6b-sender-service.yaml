@@ -1,19 +1,16 @@
-# This is now the single source of truth for the worker service
+# It exposes the traffic-sender's metrics port
 apiVersion: v1
 kind: Service
 metadata:
-  name: worker-svc
+  name: sender-svc
   # We add this label so the ServiceMonitor can find it
   labels:
-    app: worker
+    app: sender
     release: prometheus # Required by the ServiceMonitor
 spec:
   selector:
-    app: worker
+    app: sender
   ports:
-    - name: http-app # Port for the main application
-      port: 8525
-      targetPort: 8525
     - name: http-metrics # Port for Prometheus metrics
       port: 8001
       targetPort: 8001
