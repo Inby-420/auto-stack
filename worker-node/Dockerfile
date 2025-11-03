@@ -11,13 +11,15 @@ ENV PATH="/venv/bin:$PATH"
 
 # Copy and install requirements
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Activate venv and install
+RUN . /venv/bin/activate && pip install --no-cache-dir -r requirements.txt
 
 # --- STAGE 2: The Final, Lean Image ---
 # Start from a clean, lightweight image
 FROM python:3.10-alpine
 
-RUN apk add --no-cache libpq
+# **THE FIX:** Install the full 'postgresql-libs' runtime package
+RUN apk add --no-cache postgresql-libs
 
 # Set the working directory
 WORKDIR /app
