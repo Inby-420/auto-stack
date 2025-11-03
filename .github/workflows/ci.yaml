@@ -7,17 +7,12 @@ on:
   # This tells GitHub to run the workflow on any push...
   push:
     branches:
-      - main # ...to the main branch...
-    paths:
-      # ...ONLY IF a file changed inside one of these app directories
-      - 'worker-node/**'
-      - 'result-node/**'
-      - 'traffic-sender/**'
+      - main # ...to the main branch
 
 env:
   # Your GitHub Container Registry (GHCR) URL
   REGISTRY: ghcr.io
-  # The "owner" is your GitHub username. This is case-sensitive!
+  # The "owner" is your GitHub username. We force it to lowercase.
   IMAGE_OWNER: inby-420
   # The "image name" will be your repo name
   IMAGE_NAME: auto-stack
@@ -61,5 +56,9 @@ jobs:
           context: ${{ matrix.service.context }}
           file: ${{ matrix.service.dockerfile }}
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_NAME }}/${{ matrix.service.image }}:${{ github.sha }}
-          # Example tag: ghcr.io/inby-420/auto-stack/worker-node:a1b2c3d4
+          # This is the fix. We are now pushing TWO tags:
+          # 1. A unique tag based on the Git SHA (e.g., ...:81ce24cc2d)
+          # 2. The simple "latest" tag
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_NAME }}/${{ matrix.service.image }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_NAME }}/${{ matrix.service.image }}:latest

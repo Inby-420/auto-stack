@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sender-deployment
+  labels:
+    app: sender
 spec:
   replicas: 1
   selector:
@@ -10,14 +12,23 @@ spec:
   template:
     metadata:
       labels:
-        app: sender
+        app: sender # Added this label for our app-monitor
     spec:
+      # This is the new block to tell K8s how to pull private images
+      imagePullSecrets:
+        - name: ghcr-secret # The secret we created with your PAT
+      initContainers:
+        - name: check-worker-ready
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z -w 2 worker-svc 8525; do echo "Waiting for worker..."; sleep 2; done;']
       containers:
         - name: sender
-          image: traffic-sender:0.2
-          imagePullPolicy: Never
+          # This is the new image path from your GitHub Container Registry
+          image: ghcr.io/inby-420/auto-stack/traffic-sender:latest
+          imagePullPolicy: Always # Ensures it always pulls the latest image
+          ports:
+            - containerPort: 8001 # Metrics port
           env:
-            # We give the sender the *K8s service name* of the worker
             - name: WORKER_URL
               value: "http://worker-svc:8525/calculate"
-
+            # We will add CONSUL_HOST here later
