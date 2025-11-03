@@ -43,7 +43,8 @@ jobs:
   build-worker:
     runs-on: ubuntu-latest
     # Only run this job if changes were detected in its specific folder
-    if: "contains(github.event.head_commit.modified, 'worker-node/')"
+    # We convert the array of modified files to JSON and check for the substring
+    if: "contains(toJson(github.event.head_commit.modified), 'worker-node/')"
     # This job now outputs the new version number for the commit job
     outputs:
       new_version: ${{ steps.version.outputs.new_version }}
@@ -108,7 +109,8 @@ jobs:
   # -----------------------------------------------------------------
   build-result:
     runs-on: ubuntu-latest
-    if: "contains(github.event.head_commit.modified, 'result-node/')"
+    # We convert the array of modified files to JSON and check for the substring
+    if: "contains(toJson(github.event.head_commit.modified), 'result-node/')"
     outputs:
       new_version: ${{ steps.version.outputs.new_version }}
     
@@ -160,7 +162,8 @@ jobs:
   # -----------------------------------------------------------------
   build-sender:
     runs-on: ubuntu-latest
-    if: "contains(github.event.head_commit.modified, 'traffic-sender/')"
+    # We convert the array of modified files to JSON and check for the substring
+    if: "contains(toJson(github.event.head_commit.modified), 'traffic-sender/')"
     outputs:
       new_version: ${{ steps.version.outputs.new_version }}
     
