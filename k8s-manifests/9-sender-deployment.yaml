@@ -24,7 +24,7 @@ spec:
       containers:
         - name: sender
           # This is the new image path from your GitHub Container Registry
-          image: ghcr.io/inby-420/auto-stack/traffic-sender:0.3
+          image: ghcr.io/inby-420/auto-stack/traffic-sender:0.4
           imagePullPolicy: Always # Ensures it always pulls the latest image
           ports:
             - containerPort: 8001 # Metrics port

@@ -1,3 +1,4 @@
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,7 +25,7 @@ spec:
       containers:
         - name: result
           # This is the new image path from your GitHub Container Registry
-          image: ghcr.io/inby-420/auto-stack/result-node:0.3
+          image: ghcr.io/inby-420/auto-stack/result-node:0.4
           imagePullPolicy: Always # Ensures it always pulls the latest image
           ports:
             - containerPort: 8080
