@@ -1,64 +1,258 @@
-# This file defines your CI (Continuous Integration) pipeline
-# It runs on GitHub's servers to build and push your Docker images.
+# This is the advanced, closed-loop GitOps CI pipeline.
+# It builds, increments versions, and commits the new manifest.
+name: Build, Tag, and Update K8s Manifests
 
-name: Build and Push Docker Images
-
+# ---
+# 1. TRIGGER
+# ---
+# This workflow runs on any push to the 'main' branch, BUT
+# it only runs if code *inside* one of the app directories is changed.
+# This prevents an infinite loop from the manifest commit.
 on:
-  # This tells GitHub to run the workflow on any push...
   push:
     branches:
-      - main # ...to the main branch
+      - main
+    paths:
+      - 'worker-node/**'
+      - 'result-node/**'
+      - 'traffic-sender/**'
 
+# ---
+# 2. PERMISSIONS
+# ---
+# The workflow needs permissions to:
+# - 'contents: write' to commit and push the manifest file.
+# - 'packages: write' to push the new Docker image to GHCR.
+permissions:
+  contents: write
+  packages: write
+
+# ---
+# 3. ENVIRONMENT
+# ---
+# Global variables for the whole workflow.
 env:
-  # Your GitHub Container Registry (GHCR) URL
   REGISTRY: ghcr.io
-  # The "owner" is your GitHub username. We force it to lowercase.
+  # IMAGE_OWNER must be lowercase
   IMAGE_OWNER: inby-420
-  # The "image name" will be your repo name
-  IMAGE_NAME: auto-stack
 
 jobs:
-  build-and-push:
+  # -----------------------------------------------------------------
+  # JOB 1: Build and push the Worker Node
+  # -----------------------------------------------------------------
+  build-worker:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write # This gives the job permission to write to GHCR
-
-    strategy:
-      matrix:
-        # We define a "matrix" to build all 3 apps in parallel
-        # The "image" is the sub-name, the "dockerfile" is the path
-        service:
-          - image: worker-node
-            dockerfile: ./worker-node/Dockerfile
-            context: ./worker-node
-          - image: result-node
-            dockerfile: ./result-node/Dockerfile
-            context: ./result-node
-          - image: traffic-sender
-            dockerfile: ./traffic-sender/Dockerfile
-            context: ./traffic-sender
-
+    # Only run this job if changes were detected in its specific folder
+    if: "contains(github.event.head_commit.modified, 'worker-node/')"
+    # This job now outputs the new version number for the commit job
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+    
     steps:
-      - name: Check out the repository
+      - name: 1. Check out repository
         uses: actions/checkout@v4
+        with:
+          # We need a token to be able to push back to the repo
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log in to GitHub Container Registry (GHCR)
+      - name: 2. Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 3. Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }} # This is your GitHub username
-          password: ${{ secrets.GITHUB_TOKEN }} # This is a temporary token, automatically created
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+      - name: 4. Extract current version and set new version
+        id: version
+        run: |
+          # Define file paths
+          MANIFEST_FILE='k8s-manifests/5-worker-deployment.yaml'
+          IMAGE_NAME='${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/auto-stack/worker-node'
+
+          # Read the current version from the K8s manifest
+          # This command finds the 'image:' line and extracts the tag (e.g., 0.1)
+          CURRENT_VERSION=$(grep -oP "image: ${IMAGE_NAME}:\K[0-9]+\.[0-9]+" ${MANIFEST_FILE})
+          echo "Current version found: ${CURRENT_VERSION}"
+
+          # Increment the version (e.g., 0.1 -> 0.2, or 0.9 -> 1.0)
+          NEW_VERSION=$(echo ${CURRENT_VERSION} | awk -F. '{printf "%d.%d", $1, $2+1}')
+          echo "New version set to: ${NEW_VERSION}"
+
+          # Set environment variables for the next steps
+          echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
+          
+          # Export the new version for other jobs
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: 5. Build and push new image
+        uses: docker/build-push-action@v5
         with:
-          context: ${{ matrix.service.context }}
-          file: ${{ matrix.service.dockerfile }}
+          context: ./worker-node
+          file: ./worker-node/Dockerfile
           push: true
-          # This is the fix. We are now pushing TWO tags:
-          # 1. A unique tag based on the Git SHA (e.g., ...:81ce24cc2d)
-          # 2. The simple "latest" tag
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_NAME }}/${{ matrix.service.image }}:${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_NAME }}/${{ matrix.service.image }}:latest
+          tags: ${{ env.IMAGE_NAME }}:${{ env.NEW_VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 6. Update manifest file with new version
+        run: |
+          # Use sed to replace the old version with the new one in the manifest file
+          sed -i "s|${{ env.IMAGE_NAME }}:[0-9]\+\.[0-9]\+|${{ env.IMAGE_NAME }}:${{ env.NEW_VERSION }}|g" k8s-manifests/5-worker-deployment.yaml
+
+  # -----------------------------------------------------------------
+  # JOB 2: Build and push the Result Node
+  # -----------------------------------------------------------------
+  build-result:
+    runs-on: ubuntu-latest
+    if: "contains(github.event.head_commit.modified, 'result-node/')"
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+    
+    steps:
+      - name: 1. Check out repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 2. Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 3. Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 4. Extract current version and set new version
+        id: version
+        run: |
+          MANIFEST_FILE='k8s-manifests/7-result-deployment.yaml'
+          IMAGE_NAME='${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/auto-stack/result-node'
+          CURRENT_VERSION=$(grep -oP "image: ${IMAGE_NAME}:\K[0-9]+\.[0-9]+" ${MANIFEST_FILE})
+          echo "Current version found: ${CURRENT_VERSION}"
+          NEW_VERSION=$(echo ${CURRENT_VERSION} | awk -F. '{printf "%d.%d", $1, $2+1}')
+          echo "New version set to: ${NEW_VERSION}"
+          echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: 5. Build and push new image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./result-node
+          file: ./result-node/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:${{ env.NEW_VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 6. Update manifest file with new version
+        run: |
+          sed -i "s|${{ env.IMAGE_NAME }}:[0-9]\+\.[0-9]\+|${{ env.IMAGE_NAME }}:${{ env.NEW_VERSION }}|g" k8s-manifests/7-result-deployment.yaml
+
+  # -----------------------------------------------------------------
+  # JOB 3: Build and push the Traffic Sender
+  # -----------------------------------------------------------------
+  build-sender:
+    runs-on: ubuntu-latest
+    if: "contains(github.event.head_commit.modified, 'traffic-sender/')"
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+    
+    steps:
+      - name: 1. Check out repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 2. Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 3. Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 4. Extract current version and set new version
+        id: version
+        run: |
+          MANIFEST_FILE='k8s-manifests/9-sender-deployment.yaml'
+          IMAGE_NAME='${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/auto-stack/traffic-sender'
+          CURRENT_VERSION=$(grep -oP "image: ${IMAGE_NAME}:\K[0-9]+\.[0-9]+" ${MANIFEST_FILE})
+          echo "Current version found: ${CURRENT_VERSION}"
+          NEW_VERSION=$(echo ${CURRENT_VERSION} | awk -F. '{printf "%d.%d", $1, $2+1}')
+          echo "New version set to: ${NEW_VERSION}"
+          echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: 5. Build and push new image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./traffic-sender
+          file: ./traffic-sender/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:${{ env.NEW_VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 6. Update manifest file with new version
+        run: |
+          sed -i "s|${{ env.IMAGE_NAME }}:[0-9]\+\.[0-9]\+|${{ env.IMAGE_NAME }}:${{ env.NEW_VERSION }}|g" k8s-manifests/9-sender-deployment.yaml
+
+  # -----------------------------------------------------------------
+  # JOB 4: Commit and push the manifest changes
+  # -----------------------------------------------------------------
+  commit-manifests:
+    runs-on: ubuntu-latest
+    # This job MUST run after all build jobs, even if some were skipped
+    needs: [build-worker, build-result, build-sender]
+    if: always() # This ensures it runs even if some build jobs were skipped
+
+    steps:
+      - name: 1. Check out repository
+        uses: actions/checkout@v4
+        with:
+          # We need a token to be able to push back to the repo
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 2. Configure Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: 3. Check for manifest changes
+        id: check_changes
+        run: |
+          # See if there are any changes staged in the k8s-manifests directory
+          if [[ -n $(git status --porcelain k8s-manifests) ]]; then
+            echo "Changes found in k8s-manifests. Proceeding to commit."
+            echo "changes_exist=true" >> $GITHUB_ENV
+          else
+            echo "No manifest changes. Skipping commit."
+            echo "changes_exist=false" >> $GITHUB_ENV
+          fi
+
+      - name: 4. Commit and push changes
+        # Only run this step if the previous step found changes
+        if: env.changes_exist == 'true'
+        run: |
+          # Build a dynamic commit message based on which build jobs ran
+          COMMIT_MSG="ci: Auto-update image versions [skip ci]"
+          if: ${{ needs.build-worker.outputs.new_version }}
+            COMMIT_MSG="${COMMIT_MSG} | worker-node to v${{ needs.build-worker.outputs.new_version }}"
+          if: ${{ needs.build-result.outputs.new_version }}
+            COMMIT_MSG="${COMMIT_MSG} | result-node to v${{ needs.build-result.outputs.new_version }}"
+          if: ${{ needs.build-sender.outputs.new_version }}
+            COMMIT_MSG="${COMMIT_MSG} | traffic-sender to v${{ needs.build-sender.outputs.new_version }}"
+
+          git add k8s-manifests/
+          git commit -m "$COMMIT_MSG"
+          git push

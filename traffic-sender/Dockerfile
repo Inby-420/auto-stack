@@ -7,7 +7,7 @@ WORKDIR /app
 # Copy the requirements file first
 COPY requirements.txt .
 
-# Install the Python dependencies
+# Install the python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Now copy the application code

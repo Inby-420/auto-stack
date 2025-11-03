@@ -24,7 +24,7 @@ spec:
       containers:
         - name: worker
           # This is the new image path from your GitHub Container Registry
-          image: ghcr.io/inby-420/auto-stack/worker-node:latest
+          image: ghcr.io/inby-420/auto-stack/worker-node:0.3
           imagePullPolicy: Always # Ensures it always pulls the latest image
           ports:
             - containerPort: 8525 # Main app port
