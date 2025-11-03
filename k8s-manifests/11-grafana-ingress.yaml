@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: monitoring # We create the rule in the same namespace as Grafana
+spec:
+  # This field replaces the deprecated annotation
+  ingressClassName: traefik
+  rules:
+  - host: grafana.local # The URL you will use
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            # The service we are routing to
+            name: prometheus-grafana
+            port:
+              number: 80 # The Grafana service's internal port
+  - host: localhost # The new rule for localhost
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            # The service we are routing to
+            name: prometheus-grafana
+            port:
+              number: 80 # The Grafana service's internal port

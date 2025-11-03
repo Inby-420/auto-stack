@@ -1,0 +1,4 @@
+fastapi
+uvicorn[standard]
+psycopg[binary]  # <-- CHANGED: Use the modern psycopg (v3)
+jinja2

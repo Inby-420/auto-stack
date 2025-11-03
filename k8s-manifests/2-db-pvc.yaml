@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  # The name of our storage claim
+  name: postgres-pvc
+spec:
+  # K3s provides 'local-path' by default
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      # We'll reserve 2GB of our 50GB disk for the database
+      storage: 2Gi
+

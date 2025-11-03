@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  # This name MUST match the 'DB_HOST' value in your secret!
+  name: postgres-svc
+spec:
+  selector:
+    # This selects the pods managed by 'postgres-deployment'
+    app: postgres
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432

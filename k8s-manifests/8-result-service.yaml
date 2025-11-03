@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: result-svc
+spec:
+  # This makes the service accessible from OUTSIDE the VM
+  type: NodePort
+  selector:
+    app: result
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+      # We can access this on port 30080 from our Windows browser
+      nodePort: 30080

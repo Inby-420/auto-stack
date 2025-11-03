@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  # This service gives our worker a stable network name
+  name: worker-svc
+spec:
+  selector:
+    app: worker
+  ports:
+    - protocol: TCP
+      port: 8525
+      targetPort: 8525
+
