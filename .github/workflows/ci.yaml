@@ -18,7 +18,7 @@ env:
   # Your GitHub Container Registry (GHCR) URL
   REGISTRY: ghcr.io
   # The "owner" is your GitHub username. This is case-sensitive!
-  IMAGE_OWNER: Inby-420
+  IMAGE_OWNER: inby-420
   # The "image name" will be your repo name
   IMAGE_NAME: auto-stack
 
