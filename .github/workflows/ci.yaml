@@ -7,7 +7,6 @@ name: Build, Tag, and Update K8s Manifests
 # ---
 # This workflow runs on any push to the 'main' branch, BUT
 # it only runs if code *inside* one of the app directories is changed.
-# This prevents an infinite loop from the manifest commit.
 on:
   push:
     branches:
@@ -228,12 +227,15 @@ jobs:
         run: |
           # Build a dynamic commit message based on which build jobs ran
           COMMIT_MSG="ci: Auto-update image versions"
-          if: ${{ needs.build-worker.outputs.new_version }}
+          if [[ -n "${{ needs.build-worker.outputs.new_version }}" ]]; then
             COMMIT_MSG="${COMMIT_MSG} | worker-node to v${{ needs.build-worker.outputs.new_version }}"
-          if: ${{ needs.build-result.outputs.new_version }}
+          fi
+          if [[ -n "${{ needs.build-result.outputs.new_version }}" ]]; then
             COMMIT_MSG="${COMMIT_MSG} | result-node to v${{ needs.build-result.outputs.new_version }}"
-          if: ${{ needs.build-sender.outputs.new_version }}
+          fi
+          if [[ -n "${{ needs.build-sender.outputs.new_version }}" ]]; then
             COMMIT_MSG="${COMMIT_MSG} | traffic-sender to v${{ needs.build-sender.outputs.new_version }}"
+          fi
           
           echo "commit_message=${COMMIT_MSG}" >> $GITHUB_OUTPUT
 
