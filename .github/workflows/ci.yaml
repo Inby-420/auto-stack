@@ -42,9 +42,6 @@ jobs:
   # -----------------------------------------------------------------
   build-worker:
     runs-on: ubuntu-latest
-    # Only run this job if changes were detected in its specific folder
-    # We convert the array of modified files to JSON and check for the substring
-    if: "contains(toJson(github.event.head_commit.modified), 'worker-node/')"
     # This job now outputs the new version number for the commit job
     outputs:
       new_version: ${{ steps.version.outputs.new_version }}
@@ -109,8 +106,6 @@ jobs:
   # -----------------------------------------------------------------
   build-result:
     runs-on: ubuntu-latest
-    # We convert the array of modified files to JSON and check for the substring
-    if: "contains(toJson(github.event.head_commit.modified), 'result-node/')"
     outputs:
       new_version: ${{ steps.version.outputs.new_version }}
     
@@ -162,8 +157,6 @@ jobs:
   # -----------------------------------------------------------------
   build-sender:
     runs-on: ubuntu-latest
-    # We convert the array of modified files to JSON and check for the substring
-    if: "contains(toJson(github.event.head_commit.modified), 'traffic-sender/')"
     outputs:
       new_version: ${{ steps.version.outputs.new_version }}
     
@@ -181,7 +174,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.TOKEN }}
 
       - name: 4. Extract current version and set new version
         id: version
@@ -215,9 +208,8 @@ jobs:
   # -----------------------------------------------------------------
   commit-manifests:
     runs-on: ubuntu-latest
-    # This job MUST run after all build jobs, even if some were skipped
+    # This job MUST run after all build jobs
     needs: [build-worker, build-result, build-sender]
-    if: always() # This ensures it runs even if some build jobs were skipped
 
     steps:
       - name: 1. Check out repository
@@ -231,31 +223,28 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-      - name: 3. Check for manifest changes
-        id: check_changes
-        run: |
-          # See if there are any changes staged in the k8s-manifests directory
-          if [[ -n $(git status --porcelain k8s-manifests) ]]; then
-            echo "Changes found in k8s-manifests. Proceeding to commit."
-            echo "changes_exist=true" >> $GITHUB_ENV
-          else
-            echo "No manifest changes. Skipping commit."
-            echo "changes_exist=false" >> $GITHUB_ENV
-          fi
-
-      - name: 4. Commit and push changes
-        # Only run this step if the previous step found changes
-        if: env.changes_exist == 'true'
+      - name: 3. Build dynamic commit message
+        id: commit_msg
         run: |
           # Build a dynamic commit message based on which build jobs ran
-          COMMIT_MSG="ci: Auto-update image versions [skip ci]"
+          COMMIT_MSG="ci: Auto-update image versions"
           if: ${{ needs.build-worker.outputs.new_version }}
             COMMIT_MSG="${COMMIT_MSG} | worker-node to v${{ needs.build-worker.outputs.new_version }}"
           if: ${{ needs.build-result.outputs.new_version }}
             COMMIT_MSG="${COMMIT_MSG} | result-node to v${{ needs.build-result.outputs.new_version }}"
           if: ${{ needs.build-sender.outputs.new_version }}
             COMMIT_MSG="${COMMIT_MSG} | traffic-sender to v${{ needs.build-sender.outputs.new_version }}"
+          
+          echo "commit_message=${COMMIT_MSG}" >> $GITHUB_OUTPUT
 
-          git add k8s-manifests/
-          git commit -m "$COMMIT_MSG"
-          git push
+      - name: 4. Commit and push changes
+        run: |
+          # Only commit if there are actual changes
+          if [[ -n $(git status --porcelain k8s-manifests) ]]; then
+            echo "Changes found in k8s-manifests. Committing..."
+            git add k8s-manifests/
+            git commit -m "${{ steps.commit_msg.outputs.commit_message }}"
+            git push
+          else
+            echo "No manifest changes to commit."
+          fi
