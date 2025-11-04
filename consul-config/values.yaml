@@ -2,12 +2,31 @@ global:
   name: consul
   enterpriseLicense:
     secretName: ""
-
-# Skip CRD installation - use existing cluster CRDs
-global:
+  # Completely disable Gateway API
   enableConsulGatewayAPI: false
 
+# Disable all gateway-related components
+connectInject:
+  enabled: true
+  # Ensure gateway injection is disabled
+  default: false
+
 controller:
+  enabled: false
+
+gateway:
+  enabled: false
+
+apiGateway:
+  enabled: false
+
+meshGateway:
+  enabled: false
+
+ingressGateways:
+  enabled: false
+
+terminatingGateways:
   enabled: false
 
 server:
