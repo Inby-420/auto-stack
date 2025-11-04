@@ -10,46 +10,34 @@ spec:
   source:
     repoURL: https://helm.releases.hashicorp.com
     chart: vault
-    targetRevision: "0.28.0"
+    targetRevision: "0.23.0" # A recent, stable version
     helm:
       values: |
-        # Force development mode with explicit configuration
-        server:
-          # Development mode settings
+        global:
+	  server:
           dev:
             enabled: true
-          # Development-specific configuration
-          extraArgs: -dev -dev-listen-address=0.0.0.0:8200 -dev-root-token-id=root
-          # Single node setup for development
+	  ha:
+            enabled: false
           standalone:
             enabled: true
-          # Disable HA in development
-          ha:
-            enabled: false
-          # Disable Raft storage for dev
-          raft:
-            enabled: false
+          # Run in lightweight "dev" mode
+          # This disables all production complexity (like sealing)
+          dev: true
         
-        # Development-friendly global settings
-        global:
-          tlsDisable: true
-        
-        # UI for development
-        ui:
-          enabled: true
-          service:
-            type: ClusterIP
-        
-        # Injector for development
+        # This component is the "magic"
+        # It's the agent that will inject secrets into our app pods
         injector:
           enabled: true
+          
+          # Tell the injector to work with K3s's CNI
           agent:
             cni:
               enabled: true
 
   destination:
     server: 'https://kubernetes.default.svc'
-    namespace: vault
+    namespace: vault # Deploy into its own 'vault' namespace
 
   syncPolicy:
     automated:
