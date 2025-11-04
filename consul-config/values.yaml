@@ -1,0 +1,25 @@
+# This file configures the official Consul Helm chart
+global:
+  # Sets the name for our Consul cluster
+  name: consul
+
+server:
+  # Run a lightweight, single-node cluster for our project
+  replicas: 1
+  # Disable enterprise features
+  enterpriseLicense:
+    secretName: ""
+    
+ui:
+  # Enable the Consul Web UI
+  enabled: true
+  service:
+    type: ClusterIP # We'll access this via Traefik Ingress
+
+# --- This is the magic part ---
+# This block automatically populates the Consul Key/Value (KV) store
+kv:
+  enabled: true
+  defaultConfig:
+    - key: "config/tps"
+      value: "1.0" # Our starting TPS value

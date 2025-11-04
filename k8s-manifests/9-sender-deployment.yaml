@@ -2,8 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sender-deployment
-  labels:
-    app: sender
 spec:
   replicas: 1
   selector:
@@ -12,23 +10,24 @@ spec:
   template:
     metadata:
       labels:
-        app: sender # Added this label for our app-monitor
+        app: sender
+        release: prometheus # For the ServiceMonitor
     spec:
       # This is the new block to tell K8s how to pull private images
       imagePullSecrets:
-        - name: ghcr-secret # The secret we created with your PAT
-      initContainers:
-        - name: check-worker-ready
-          image: busybox:1.36
-          command: ['sh', '-c', 'until nc -z -w 2 worker-svc 8525; do echo "Waiting for worker..."; sleep 2; done;']
+        - name: ghcr-secret
       containers:
         - name: sender
-          # This is the new image path from your GitHub Container Registry
-          image: ghcr.io/inby-420/auto-stack/traffic-sender:0.5
-          imagePullPolicy: Always # Ensures it always pulls the latest image
-          ports:
-            - containerPort: 8001 # Metrics port
+          # This will be automatically updated by your CI pipeline
+          image: ghcr.io/inby-420/auto-stack/traffic-sender:0.1
+          # This forces K8s to check for new versions of the image
+          imagePullPolicy: Always
+          envFrom:
+            # Load the 'postgres-secret' for database credentials
+            - secretRef:
+                name: postgres-secret
           env:
-            - name: WORKER_URL
-              value: "http://worker-svc:8525/calculate"
-            # We will add CONSUL_HOST here later
+            # --- NEW VARIABLE ---
+            # This is the K8s DNS name for the Consul server
+            - name: CONSUL_HOST
+              value: "consul-server.consul.svc.cluster.local"

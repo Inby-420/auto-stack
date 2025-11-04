@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: consul
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    # The official Consul Helm chart repository
+    repoURL: https://helm.releases.hashicorp.com
+    chart: consul
+    targetRevision: "1.4.3" # Pinning to a specific, stable version
+    
+    helm:
+      # This tells Argo CD to use OUR custom values file from OUR repo
+      valueFiles:
+        - $values/auto-stack/consul-config/values.yaml
+
+  # This is a trick to tell Argo CD to get the 'valueFiles'
+  # from a *different* repo (our auto-stack repo)
+  sources:
+    - repoURL: 'https://github.com/Inby-420/auto-stack.git'
+      targetRevision: HEAD
+      ref: values # We name this reference 'values'
+
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: consul # We'll install Consul in its own namespace
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true # Tell Argo to create the 'consul' namespace
