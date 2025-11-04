@@ -7,40 +7,26 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  
-  # This section defines the source of the application
   sources:
-    # Source 1: The Helm Chart
-    # This tells Argo to get the base Consul chart from HashiCorp's repo
-    - repoURL: https://helm.releases.hashicorp.com
-      chart: consul
-      # Pin to a specific, stable version
-      targetRevision: "1.4.3" 
-      helm:
-        valueFiles:
-          - $values/values.yaml
-        
-    # Source 2: The Values File
-    # This tells Argo where to find the $values variable
     - repoURL: 'https://github.com/Inby-420/auto-stack.git'
       targetRevision: HEAD
-      # Point this source *specifically* to the consul-config directory
+      path: k8s-manifests
+    - repoURL: 'https://github.com/Inby-420/auto-stack.git'
+      targetRevision: HEAD
       path: consul-config
-      # This 'ref' is a special name that links to the $values
-      ref: values
-
-  # This section defines where to deploy it
+      ref: valueFile  
+    - repoURL: https://helm.releases.hashicorp.com
+      chart: consul
+      targetRevision: "1.4.3"
+      helm:
+        valueFiles:
+          - $valueFile/values.yaml
   destination:
     server: 'https://kubernetes.default.svc'
-    # Deploy Consul into its own dedicated namespace
     namespace: consul
-
-  # This section defines the sync policy
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      # This is crucial: it tells Argo to create the 'consul' namespace
-      # if it doesn't already exist.
       - CreateNamespace=true
