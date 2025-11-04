@@ -10,9 +10,6 @@ spec:
   sources:
     - repoURL: 'https://github.com/Inby-420/auto-stack.git'
       targetRevision: HEAD
-      path: k8s-manifests
-    - repoURL: 'https://github.com/Inby-420/auto-stack.git'
-      targetRevision: HEAD
       path: consul-config
       ref: valueFile  
     - repoURL: https://helm.releases.hashicorp.com
@@ -20,7 +17,7 @@ spec:
       targetRevision: "1.4.3"
       helm:
         valueFiles:
-          - $valueFile/values.yaml
+          - consul-config/values.yaml
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: consul
