@@ -13,27 +13,47 @@ spec:
     targetRevision: "0.28.0"
     helm:
       values: |
-        # Full development mode setup
+        # Force development mode with explicit configuration
         server:
+          # Development mode settings
           dev:
             enabled: true
-          # Single server for development
+          # Development-specific configuration
+          extraArgs: -dev -dev-listen-address=0.0.0.0:8200 -dev-root-token-id=root
+          # Single node setup for development
           standalone:
             enabled: true
-          # Disable HA for dev
+          # Disable HA in development
           ha:
             enabled: false
+          # Disable Raft storage for dev
+          raft:
+            enabled: false
         
-        # Development-friendly settings
-        ui:
-          enabled: true
-          serviceType: "ClusterIP"
-        
+        # Development-friendly global settings
         global:
           tlsDisable: true
         
+        # UI for development
+        ui:
+          enabled: true
+          service:
+            type: ClusterIP
+        
+        # Injector for development
         injector:
           enabled: true
           agent:
             cni:
               enabled: true
+
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: vault
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
