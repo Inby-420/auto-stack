@@ -18,6 +18,7 @@ spec:
         # skipCrds: true
     - repoURL: 'https://github.com/Inby-420/auto-stack.git'
       targetRevision: HEAD
+      path: consul-config
       ref: values
   destination:
     server: 'https://kubernetes.default.svc'
