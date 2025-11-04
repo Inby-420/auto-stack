@@ -10,30 +10,30 @@ spec:
   source:
     repoURL: https://helm.releases.hashicorp.com
     chart: vault
-    targetRevision: "0.28.0" # A recent, stable version
+    targetRevision: "0.28.0"
     helm:
       values: |
-        global:
-          # Run in lightweight "dev" mode
-          # This disables all production complexity
-          dev: true
+        # Full development mode setup
+        server:
+          dev:
+            enabled: true
+          # Single server for development
+          standalone:
+            enabled: true
+          # Disable HA for dev
+          ha:
+            enabled: false
         
-        # It's the agent that will inject secrets into our app pods
+        # Development-friendly settings
+        ui:
+          enabled: true
+          serviceType: "ClusterIP"
+        
+        global:
+          tlsDisable: true
+        
         injector:
           enabled: true
-          
-          # Tell the injector to work with K3s's CNI
           agent:
             cni:
               enabled: true
-
-  destination:
-    server: 'https://kubernetes.default.svc'
-    namespace: vault # Deploy into its own 'vault' namespace
-
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
