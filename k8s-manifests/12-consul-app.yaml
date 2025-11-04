@@ -7,16 +7,15 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  # Use ONLY sources (not source + sources)
   sources:
-    # Source 1: Helm chart
     - repoURL: https://helm.releases.hashicorp.com
       chart: consul
       targetRevision: "1.4.3"
       helm:
         valueFiles:
           - $values/consul-config/values.yaml
-    # Source 2: Values from Git
+        # Skip CRD installation entirely
+        skipCrds: true
     - repoURL: 'https://github.com/Inby-420/auto-stack.git'
       targetRevision: HEAD
       ref: values
