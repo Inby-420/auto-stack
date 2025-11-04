@@ -19,7 +19,7 @@ spec:
       containers:
         - name: sender
           # This will be automatically updated by your CI pipeline
-          image: ghcr.io/inby-420/auto-stack/traffic-sender:0.8
+          image: ghcr.io/inby-420/auto-stack/traffic-sender:0.9
           # This forces K8s to check for new versions of the image
           imagePullPolicy: Always
           envFrom:
