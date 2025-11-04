@@ -15,7 +15,7 @@ spec:
         valueFiles:
           - $values/consul-config/values.yaml
         # Skip CRD installation entirely
-        skipCrds: true
+        # skipCrds: true
     - repoURL: 'https://github.com/Inby-420/auto-stack.git'
       targetRevision: HEAD
       ref: values
