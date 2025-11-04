@@ -1,15 +1,15 @@
-# This file configures the official Consul Helm chart
 global:
   # Sets the name for our Consul cluster
   name: consul
+  # Disable enterprise feature
+  enterpriseLicense:
+    secretName: ""
 
 server:
   # Run a lightweight, single-node cluster for our project
   replicas: 1
-  # Disable enterprise features
-  enterpriseLicense:
-    secretName: ""
-    
+  # REMOVE the enterpriseLicense section from here
+
 ui:
   # Enable the Consul Web UI
   enabled: true
