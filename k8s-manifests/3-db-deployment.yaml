@@ -12,7 +12,7 @@ spec:
       labels:
         app: postgres
       
-      # --- THIS IS THE NEW VAULT INTEGRATION ---
+      # --- THIS IS THE VAULT INTEGRATION ---
       annotations:
         vault.hashicorp.com/agent-inject: 'true'
         vault.hashicorp.com/role: 'default'
@@ -24,9 +24,9 @@ spec:
         #    that this pod needs to initialize.
         vault.hashicorp.com/agent-inject-template-db-creds: |
           {{- with secret "secret/data/database" -}}
-          export POSTGRES_DB={{ .Data.data.POSTGRES_DB | squote }}
-          export POSTGRES_USER={{ .Data.data.POSTGRES_USER | squote }}
-          export POSTGRES_PASSWORD={{ .Data.data.POSTGRES_PASSWORD | squote }}
+          export POSTGRES_DB={{ .Data.data.POSTGRES_DB | printf "%q" }}
+          export POSTGRES_USER={{ .Data.data.POSTGRES_USER | printf "%q" }}
+          export POSTGRES_PASSWORD={{ .Data.data.POSTGRES_PASSWORD | printf "%q" }}
           {{- end }}
       # --- END OF VAULT INTEGRATION ---
 
@@ -40,7 +40,6 @@ spec:
           ports:
             - containerPort: 5432
           
-          # --- DELETED ---
           # We no longer use the insecure 'envFrom: secretRef'
           
           volumeMounts:
