@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://helm.releases.hashicorp.com
+    chart: vault
+    targetRevision: "0.23.0" # The stable version you found
+    helm:
+      # These values are now indented with spaces, not tabs
+      values: |
+        global:
+          server:
+            dev:
+              enabled: true
+          ha:
+            enabled: false
+          standalone:
+            enabled: true
+        
+        injector:
+          enabled: true
+          agent:
+            cni:
+              enabled: true
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: vault # Deploy into its own 'vault' namespace
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
