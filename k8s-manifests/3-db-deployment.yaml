@@ -11,26 +11,42 @@ spec:
     metadata:
       labels:
         app: postgres
+      
+      # --- THIS IS THE NEW VAULT INTEGRATION ---
+      annotations:
+        vault.hashicorp.com/agent-inject: 'true'
+        vault.hashicorp.com/role: 'default'
+        
+        # 1. Define the secret we want
+        vault.hashicorp.com/agent-inject-secret-db-creds: 'secret/data/database'
+        
+        # 2. Template to inject ONLY the POSTGRES_ variables
+        #    that this pod needs to initialize.
+        vault.hashicorp.com/agent-inject-template-db-creds: |
+          {{- with secret "secret/data/database" -}}
+          export POSTGRES_DB={{ .Data.data.POSTGRES_DB | squote }}
+          export POSTGRES_USER={{ .Data.data.POSTGRES_USER | squote }}
+          export POSTGRES_PASSWORD={{ .Data.data.POSTGRES_PASSWORD | squote }}
+          {{- end }}
+      # --- END OF VAULT INTEGRATION ---
+
     spec:
+      # Use the 'default' service account which we gave Vault access to
+      serviceAccountName: default
+      
       containers:
         - name: postgres
-          # We'll use a lightweight 'alpine' version of postgres
           image: postgres:15-alpine
           ports:
             - containerPort: 5432
-          envFrom:
-            # This is the key: it loads all key-value pairs
-            # from our 'postgres-secret' as environment variables.
-            # This is how our apps get their credentials!
-            - secretRef:
-                name: postgres-secret
+          
+          # --- DELETED ---
+          # We no longer use the insecure 'envFrom: secretRef'
+          
           volumeMounts:
             - name: postgres-storage
-              # This mounts our persistent storage into the container
               mountPath: /var/lib/postgresql/data
       volumes:
         - name: postgres-storage
-          # This links to the PersistentVolumeClaim we created
           persistentVolumeClaim:
             claimName: postgres-pvc
-
