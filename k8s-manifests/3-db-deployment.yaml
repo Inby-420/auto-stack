@@ -28,6 +28,9 @@ spec:
           export POSTGRES_USER={{ .Data.data.POSTGRES_USER | printf "%q" }}
           export POSTGRES_PASSWORD={{ .Data.data.POSTGRES_PASSWORD | printf "%q" }}
           {{- end }}
+        
+        # This tells the agent to create the file at this path
+        vault.hashicorp.com/agent-inject-secret-destination: 'db-creds'
       # --- END OF VAULT INTEGRATION ---
 
     spec:
@@ -37,10 +40,14 @@ spec:
       containers:
         - name: postgres
           image: postgres:15-alpine
+        
+          # We wrap the original command to source the new secret file first.
+          command: ["/bin/sh", "-c"]
+          args:
+            - . /vault/secrets/db-creds && docker-entrypoint.sh postgres
+          
           ports:
             - containerPort: 5432
-          
-          # We no longer use the insecure 'envFrom: secretRef'
           
           volumeMounts:
             - name: postgres-storage
