@@ -15,8 +15,8 @@ spec:
       values: |
         global:
           server:
-          dev:
-            enabled: true
+            dev:
+              enabled: true
           ha:
             enabled: false
           standalone:
